@@ -1,6 +1,27 @@
 version: "3"
 
+# minio base configs
+# Settings and configurations that are common for all containers
+x-minio-common: &minio-common
+  image: quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z
+  command: server --console-address ":9001" http://minio{1...1}/data{1...2}
+  #ports:
+  expose:
+    - "9000"
+    - "9001"
+  environment:
+    MINIO_ROOT_USER: minioadmin
+    MINIO_ROOT_PASSWORD: minioadmin
+  healthcheck:
+    test: ["CMD", "mc", "ready", "local"]
+    interval: 5s
+    timeout: 5s
+    retries: 5
+  networks:
+      - bigdata
+
 services:
+  #HDFS
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: namenode
@@ -8,13 +29,16 @@ services:
     restart: always
     ports:
       - 9870:9870
-      - 9000:9000
+  #    - 9000:9000
+    expose:
+      - "9000"
     volumes:
       - hadoop_namenode:/hadoop/dfs/name
+      - share_data:/partage
     environment:
       - CLUSTER_NAME=test
     env_file:
-      - ./hadoop.env
+      - ./hadoop.env      
     #network_mode: host
     networks:
       - bigdata
@@ -32,6 +56,7 @@ services:
       - "50020:50020"
     volumes:
       - hadoop_datanode:/hadoop/dfs/data
+      - share_data:/partage
     environment:
       SERVICE_PRECONDITION: "namenode:9870"
     env_file:
@@ -40,6 +65,47 @@ services:
     networks:
       - bigdata
       
+  #MINIO
+  # url: https://github.com/minio/minio/tree/master/docs/orchestration/docker-compose
+  minio1:
+    <<: *minio-common
+    hostname: minio1
+    container_name: minio1
+    restart: always
+    volumes:
+      - data1-1:/data1
+      - data1-2:/data2
+
+  #minio2:
+  #  <<: *minio-common
+  #  hostname: minio2
+  #  container_name: minio2
+  #  restart: always
+  #  volumes:
+  #    - data2-1:/data1
+  #    - data2-2:/data2
+  
+  nginx_minio:
+    image: nginx:1.19.2-alpine
+    hostname: nginx_minio
+    container_name: nginx_minio
+    restart: always
+    volumes:
+      - ./nginx_minio.conf:/etc/nginx/nginx.conf:ro
+    ports:
+    #  - "9010:9000"
+    #  - "9011:9001"
+      - "9000:9000"
+      - "9001:9001"
+    depends_on:
+      - minio1
+  #    - minio2
+  #    - minio3
+  #    - minio4
+    networks:
+      - bigdata
+  
+  #YARN      
   resourcemanager:
     image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
     container_name: resourcemanager
@@ -51,6 +117,8 @@ services:
       SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
     env_file:
       - ./hadoop.env
+    volumes:
+      - share_data:/partage
     #network_mode: host
     networks:
       - bigdata
@@ -66,6 +134,8 @@ services:
       SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088"
     env_file:
       - ./hadoop.env
+    volumes:
+      - share_data:/partage
     #network_mode: host
     networks:
       - bigdata
@@ -81,56 +151,63 @@ services:
       SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088"
     volumes:
       - hadoop_historyserver:/hadoop/yarn/timeline
+      - share_data:/partage
     env_file:
-      - ./hadoop.env
+      - ./hadoop.env      
     #network_mode: host      
     networks:
       - bigdata
 
-  hive-server:
-    image: bde2020/hive:2.3.2-postgresql-metastore
-    container_name: hive-server
-    hostname: hive-server
-    #network_mode: host
-    networks:
-      - bigdata    
-    env_file:
-      - ./hadoop-hive.env
-      - ./hadoop.env
-    environment:
-      HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore/metastore"
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088 hive-metastore:9083"
-    ports:
-      - "10000:10000"
-      - "10002:10002"
+  #hive-server:
+  #  image: bde2020/hive:2.3.2-postgresql-metastore
+  #  container_name: hive-server
+  #  hostname: hive-server
+  #  #network_mode: host
+  #  networks:
+  #    - bigdata    
+  #  env_file:
+  #    - ./hadoop-hive.env
+  #    - ./hadoop.env
+  #  environment:
+  #    HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore/metastore"
+  #    SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088 hive-metastore:9083"
+  #  volumes:
+  #    - share_data:/partage
+  #  ports:
+  #    - "10000:10000"
+  #    - "10002:10002"
+  #
+  #hive-metastore:
+  #  image: bde2020/hive:2.3.2-postgresql-metastore
+  #  container_name: hive-metastore
+  #  hostname: hive-metastore
+  #  #network_mode: host
+  #  networks:
+  #    - bigdata
+  #  env_file:
+  #    - ./hadoop-hive.env
+  #    - ./hadoop.env
+  #  command: /opt/hive/bin/hive --service metastore
+  #  environment:
+  #    SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088 hive-metastore-postgresql:5432"
+  #  volumes:
+  #    - share_data:/partage
+  #  ports:
+  #    - "9083:9083"
+  #
+  #hive-metastore-postgresql:
+  #  image: bde2020/hive-metastore-postgresql:2.3.0
+  #  container_name: hive-metastore-postgresql
+  #  hostname: hive-metastore-postgresql
+  #  #network_mode: host
+  #  networks:
+  #    - bigdata
+  #  volumes:
+  #    - share_data:/partage
+  #  ports:
+  #    - "5432:5432"
 
-  hive-metastore:
-    image: bde2020/hive:2.3.2-postgresql-metastore
-    container_name: hive-metastore
-    hostname: hive-metastore
-    #network_mode: host
-    networks:
-      - bigdata
-    env_file:
-      - ./hadoop-hive.env
-      - ./hadoop.env
-    command: /opt/hive/bin/hive --service metastore
-    environment:
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088 hive-metastore-postgresql:5432"
-    ports:
-      - "9083:9083"
-
-  hive-metastore-postgresql:
-    image: bde2020/hive-metastore-postgresql:2.3.0
-    container_name: hive-metastore-postgresql
-    hostname: hive-metastore-postgresql
-    #network_mode: host
-    networks:
-      - bigdata
-    ports:
-      - "5432:5432"
-
-    #nanp-mysql:
+  #nanp-mysql:
   #  image: mysql:8.0
   #  container_name: nanp-mysql
   #  hostname: nanp-mysql
@@ -166,55 +243,145 @@ services:
   #    - "8887:8080"
   #    - "8443:8443"
    
-  spark-master:
-    image: bde2020/spark-master:3.3.0-hadoop3.3
-    container_name: spark-master
-    hostname: spark-master
-    ports:
-      - "8080:8080"
-      - "7077:7077"
-    environment:
-      - INIT_DAEMON_STEP=setup_spark
-      - HADOOP_CONF_DIR=/partage/xml_spark
-      - SPARK_WORKER_CORES=1
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_DRIVER_MEMORY=1G
-      - SPARK_EXECUTOR_MEMORY=1G
-      - SPARK_MASTER=yarn
-    volumes:
-      - share_data:/partage
-    networks:
-      - bigdata
-  spark-worker:
-    image: bde2020/spark-worker:3.3.0-hadoop3.3
-    container_name: spark-worker
-    hostname: spark-worker
-    depends_on:
-      - spark-master
-    ports:
-      - "8081:8081"
-    environment:
-      - "SPARK_MASTER=spark://spark-master:7077"
-      - HADOOP_CONF_DIR=/partage/xml_spark
-      - SPARK_WORKER_CORES=1
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_DRIVER_MEMORY=1G
-      - SPARK_EXECUTOR_MEMORY=1G
-    volumes:
-      - share_data:/partage
-    networks:
-      - bigdata
+  #spark-master:
+  #  image: bde2020/spark-master:3.3.0-hadoop3.3
+  #  container_name: spark-master
+  #  hostname: spark-master
+  #  ports:
+  #    - "8080:8080"
+  #    - "7077:7077"
+  #  environment:
+  #    - INIT_DAEMON_STEP=setup_spark
+  #    - HADOOP_CONF_DIR=/partage/xml_spark
+  #    - SPARK_WORKER_CORES=1
+  #    - SPARK_WORKER_MEMORY=1G
+  #    - SPARK_DRIVER_MEMORY=1G
+  #    - SPARK_EXECUTOR_MEMORY=1G
+  #    - SPARK_MASTER=yarn
+  #  volumes:
+  #    - share_data:/partage
+  #  networks:
+  #    - bigdata
+  #spark-worker:
+  #  image: bde2020/spark-worker:3.3.0-hadoop3.3
+  #  container_name: spark-worker
+  #  hostname: spark-worker
+  #  depends_on:
+  #    - spark-master
+  #  ports:
+  #    - "8081:8081"
+  #  environment:
+  #    - "SPARK_MASTER=spark://spark-master:7077"
+  #    - HADOOP_CONF_DIR=/partage/xml_spark
+  #    - SPARK_WORKER_CORES=1
+  #    - SPARK_WORKER_MEMORY=1G
+  #    - SPARK_DRIVER_MEMORY=1G
+  #    - SPARK_EXECUTOR_MEMORY=1G
+  #  volumes:
+  #    - share_data:/partage
+  #  networks:
+  #    - bigdata
+  #    
+  #elasticsearch:
+  #  #image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+  #  image: docker.elastic.co/elasticsearch/elasticsearch:8.3.2
+  #  container_name: elasticsearch
+  #  hostname: elasticsearch
+  #  restart: always
+  #  environment:
+  #    - xpack.security.enabled=false
+  #    - discovery.type=single-node
+  #    - node.name=elasticsearch
+  #    - cluster.name=docker-cluster
+  #    ##- cluster.initial_master_nodes=elasticsearch
+  #    - bootstrap.memory_lock=true
+  #    - "ES_JAVA_OPTS=-Xms256M -Xmx256M"
+  #    #- http.cors.enabled=true
+  #    #- http.cors.allow-origin=*
+  #    ##- network.host=_eth0_
+  #  ulimits:
+  #    memlock:
+  #      soft: -1
+  #      hard: -1
+  #    nofile:
+  #      soft: 65536
+  #      hard: 65536
+  #  cap_add:
+  #    - IPC_LOCK
+  #  volumes:
+  #    - share_data:/partage
+  #    #- ./elasticsearch-data:/usr/share/elasticsearch/data
+  #    - elastic_data:/usr/share/elasticsearch/data
+  #  ports:
+  #    - 9200:9200
+  #  networks:
+  #    - bigdata
+  #kibana:
+  #  container_name: kibana
+  #  #image: docker.elastic.co/kibana/kibana:7.4.0
+  #  image: docker.elastic.co/kibana/kibana:8.3.2
+  #  hostname: kibana
+  #  restart: always
+  #  environment:
+  #    - ELASTICSEARCH_HOSTS=http://elasticsearch:9200    # address of elasticsearch docker container which kibana will connect
+  #  ports:
+  #    - 5601:5601
+  #  depends_on:
+  #    - elasticsearch
+  #  volumes:
+  #    - share_data:/partage
+  #  networks:
+  #    - bigdata
     
 volumes:
   hadoop_namenode:
-  hadoop_datanode:
-  hadoop_historyserver:
-  mysql_data:
     driver: local # Define the driver and options under the volume name
     driver_opts:
       type: none
-      device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mysql
+      device: C:\Users\ngoun\Downloads\music\docker_volume\volume_hadoop\namenode
       o: bind
+  hadoop_datanode:
+    driver: local # Define the driver and options under the volume name
+    driver_opts:
+      type: none
+      device: C:\Users\ngoun\Downloads\music\docker_volume\volume_hadoop\datanode
+      o: bind
+  data1-1:
+    driver: local # Define the driver and options under the volume name
+    driver_opts:
+      type: none
+      device: C:\Users\ngoun\Downloads\music\docker_volume\minio_volume\data1\data1_1
+      o: bind
+  data1-2:
+    driver: local # Define the driver and options under the volume name
+    driver_opts:
+      type: none
+      device: C:\Users\ngoun\Downloads\music\docker_volume\minio_volume\data1\data1_2
+      o: bind
+  hadoop_historyserver:
+    driver: local # Define the driver and options under the volume name
+    driver_opts:
+      type: none
+      device: C:\Users\ngoun\Downloads\music\docker_volume\volume_hadoop\historyserver
+      o: bind
+  #mysql_data:
+  #  driver: local # Define the driver and options under the volume name
+  #  driver_opts:
+  #    type: none
+  #    device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mysql
+  #    o: bind
+  #elastic_data:
+  #  driver: local # Define the driver and options under the volume name
+  #  driver_opts:
+  #    type: none
+  #    device: C:\Users\ngoun\Downloads\music\docker_volume\volume_elastic
+  #    o: bind
+  #kibana_data:
+  #  driver: local # Define the driver and options under the volume name
+  #  driver_opts:
+  #    type: none
+  #    device: C:\Users\ngoun\Downloads\music\docker_volume\volume_kibana
+  #    o: bind
   share_data:
     driver: local # Define the driver and options under the volume name
     driver_opts:
