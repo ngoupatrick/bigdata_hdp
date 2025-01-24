@@ -4,11 +4,13 @@ version: "3"
 # Settings and configurations that are common for all containers
 x-minio-common: &minio-common
   image: quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z
-  command: server --console-address ":9001" http://minio{1...1}/data{1...2}
+  #command: server --console-address ":9001" http://minio{1...1}/data{1...2} # ":UI port" datastorage
+  command: server --address=":19000" --console-address ":9001" http://minio{1...1}/data{1...2} # [:API port] [:UI port] [datastorage]
   #ports:
   expose:
-    - "9000"
-    - "9001"
+    #- "9000" #S3 API operations (each server use to talk to each other)
+    - "19000" #S3 API operations (each server use to talk to each other)
+    - "9001" #browser access
   environment:
     MINIO_ROOT_USER: minioadmin
     MINIO_ROOT_PASSWORD: minioadmin
@@ -29,7 +31,7 @@ services:
     restart: always
     ports:
       - 9870:9870
-  #    - 9000:9000
+      - 9000:9000
     expose:
       - "9000"
     volumes:
@@ -93,9 +95,8 @@ services:
     volumes:
       - ./nginx_minio.conf:/etc/nginx/nginx.conf:ro
     ports:
-    #  - "9010:9000"
-    #  - "9011:9001"
-      - "9000:9000"
+      #- "9000:9000"
+      - "19000:19000"
       - "9001:9001"
     depends_on:
       - minio1
