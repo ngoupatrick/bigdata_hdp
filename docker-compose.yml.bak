@@ -1,26 +1,26 @@
 version: "3"
 
-# minio base configs
-# Settings and configurations that are common for all containers
-x-minio-common: &minio-common
-  image: quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z
-  #command: server --console-address ":9001" http://minio{1...1}/data{1...2} # ":UI port" datastorage
-  command: server --address=":19000" --console-address ":9001" http://minio{1...1}/data{1...2} # [:API port] [:UI port] [datastorage]
-  #ports:
-  expose:
-    #- "9000" #S3 API operations (each server use to talk to each other)
-    - "19000" #S3 API operations (each server use to talk to each other)
-    - "9001" #browser access
-  environment:
-    MINIO_ROOT_USER: minioadmin
-    MINIO_ROOT_PASSWORD: minioadmin
-  healthcheck:
-    test: ["CMD", "mc", "ready", "local"]
-    interval: 5s
-    timeout: 5s
-    retries: 5
-  networks:
-      - bigdata
+## minio base configs
+## Settings and configurations that are common for all containers
+#x-minio-common: &minio-common
+#  image: quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z
+#  #command: server --console-address ":9001" http://minio{1...1}/data{1...2} # ":UI port" datastorage
+#  command: server --address=":19000" --console-address ":9001" http://minio{1...1}/data{1...2} # [:API port] [:UI port] [datastorage]
+#  #ports:
+#  expose:
+#    #- "9000" #S3 API operations (each server use to talk to each other)
+#    - "19000" #S3 API operations (each server use to talk to each other)
+#    - "9001" #browser access
+#  environment:
+#    MINIO_ROOT_USER: minioadmin
+#    MINIO_ROOT_PASSWORD: minioadmin
+#  healthcheck:
+#    test: ["CMD", "mc", "ready", "local"]
+#    interval: 5s
+#    timeout: 5s
+#    retries: 5
+#  networks:
+#      - bigdata
 
 services:
   #HDFS
@@ -30,8 +30,8 @@ services:
     hostname: namenode
     restart: always
     ports:
-      - 9870:9870
-      - 9000:9000
+      - 9870:9870 #UI
+      - 9000:9000 #
     expose:
       - "9000"
     volumes:
@@ -67,44 +67,47 @@ services:
     networks:
       - bigdata
       
-  #MINIO
-  # url: https://github.com/minio/minio/tree/master/docs/orchestration/docker-compose
-  minio1:
-    <<: *minio-common
-    hostname: minio1
-    container_name: minio1
-    restart: always
-    volumes:
-      - data1-1:/data1
-      - data1-2:/data2
-
-  #minio2:
+  ##MINIO
+  ## url: https://github.com/minio/minio/tree/master/docs/orchestration/docker-compose
+  ## python acces:
+  ## https://min.io/docs/minio/linux/developers/python/API.html
+  ## https://min.io/docs/minio/linux/developers/python/minio-py.html
+  #minio1:
   #  <<: *minio-common
-  #  hostname: minio2
-  #  container_name: minio2
+  #  hostname: minio1
+  #  container_name: minio1
   #  restart: always
   #  volumes:
-  #    - data2-1:/data1
-  #    - data2-2:/data2
-  
-  nginx_minio:
-    image: nginx:1.19.2-alpine
-    hostname: nginx_minio
-    container_name: nginx_minio
-    restart: always
-    volumes:
-      - ./nginx_minio.conf:/etc/nginx/nginx.conf:ro
-    ports:
-      #- "9000:9000"
-      - "19000:19000"
-      - "9001:9001"
-    depends_on:
-      - minio1
-  #    - minio2
-  #    - minio3
-  #    - minio4
-    networks:
-      - bigdata
+  #    - data1-1:/data1
+  #    - data1-2:/data2
+  #
+  ##minio2:
+  ##  <<: *minio-common
+  ##  hostname: minio2
+  ##  container_name: minio2
+  ##  restart: always
+  ##  volumes:
+  ##    - data2-1:/data1
+  ##    - data2-2:/data2
+  #
+  #nginx_minio:
+  #  image: nginx:1.19.2-alpine
+  #  hostname: nginx_minio
+  #  container_name: nginx_minio
+  #  restart: always
+  #  volumes:
+  #    - ./nginx_minio.conf:/etc/nginx/nginx.conf:ro
+  #  ports:
+  #    #- "9000:9000"
+  #    - "19000:19000"
+  #    - "9001:9001"
+  #  depends_on:
+  #    - minio1
+  ##    - minio2
+  ##    - minio3
+  ##    - minio4
+  #  networks:
+  #    - bigdata
   
   #YARN      
   resourcemanager:
@@ -159,54 +162,69 @@ services:
     networks:
       - bigdata
 
-  #hive-server:
-  #  image: bde2020/hive:2.3.2-postgresql-metastore
-  #  container_name: hive-server
-  #  hostname: hive-server
-  #  #network_mode: host
-  #  networks:
-  #    - bigdata    
-  #  env_file:
-  #    - ./hadoop-hive.env
-  #    - ./hadoop.env
-  #  environment:
-  #    HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore/metastore"
-  #    SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088 hive-metastore:9083"
-  #  volumes:
-  #    - share_data:/partage
-  #  ports:
-  #    - "10000:10000"
-  #    - "10002:10002"
-  #
-  #hive-metastore:
-  #  image: bde2020/hive:2.3.2-postgresql-metastore
-  #  container_name: hive-metastore
-  #  hostname: hive-metastore
-  #  #network_mode: host
-  #  networks:
-  #    - bigdata
-  #  env_file:
-  #    - ./hadoop-hive.env
-  #    - ./hadoop.env
-  #  command: /opt/hive/bin/hive --service metastore
-  #  environment:
-  #    SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088 hive-metastore-postgresql:5432"
-  #  volumes:
-  #    - share_data:/partage
-  #  ports:
-  #    - "9083:9083"
-  #
-  #hive-metastore-postgresql:
-  #  image: bde2020/hive-metastore-postgresql:2.3.0
-  #  container_name: hive-metastore-postgresql
-  #  hostname: hive-metastore-postgresql
-  #  #network_mode: host
-  #  networks:
-  #    - bigdata
-  #  volumes:
-  #    - share_data:/partage
-  #  ports:
-  #    - "5432:5432"
+  hive-server:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-server
+    hostname: hive-server
+    #network_mode: host
+    networks:
+      - bigdata    
+    env_file:
+      - ./hadoop-hive.env
+      - ./hadoop.env
+    environment:
+      HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore/metastore"
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088 hive-metastore:9083"
+    volumes:
+      - share_data:/partage
+    ports:
+      - "10000:10000"
+      - "10002:10002"
+  
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-metastore
+    hostname: hive-metastore
+    #network_mode: host
+    networks:
+      - bigdata
+    env_file:
+      - ./hadoop-hive.env
+      - ./hadoop.env
+    command: /opt/hive/bin/hive --service metastore
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 resourcemanager:8088 hive-metastore-postgresql:5432"
+    volumes:
+      - share_data:/partage
+    ports:
+      - "9083:9083"
+  
+  hive-metastore-postgresql:
+    image: bde2020/hive-metastore-postgresql:2.3.0
+    container_name: hive-metastore-postgresql
+    hostname: hive-metastore-postgresql
+    #network_mode: host
+    networks:
+      - bigdata
+    volumes:
+      - share_data:/partage
+    ports:
+      - "5432:5432"
+      
+  impala-server:
+    image: apache/impala:latest
+    container_name: impala-server
+    hostname: impala-server
+    environment:
+      - IMPALA_HIVE_METASTORE_HOST=hive-metastore
+      - IMPALA_HIVE_METASTORE_PORT=9083
+      - IMPALA_KERBEROS_ENABLED=false
+    ports:
+      - "21000:21000"  # Impala Query port
+    depends_on:
+      - hive-metastore
+    networks:
+      - bigdata
 
   #nanp-mysql:
   #  image: mysql:8.0
