@@ -1,3 +1,3 @@
-data/
-jars/
+#data/
+#jars/
 *.bak
