@@ -1,0 +1,9 @@
+hdfs dfs -mkdir /test
+
+cat > salle01.CSV
+nom_salle,etage_salle,nb_banc
+salle 8,2,13
+salle 16,1,15
+salle 9,2,19
+
+hdfs dfs -put /salle01.CSV /test/
