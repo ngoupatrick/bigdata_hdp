@@ -230,26 +230,26 @@ services:
     ports:
       - "8889:3306"  
   
-  ## MONGODB
-  #mongo:
-  #  image: mongo:latest
-  #  container_name: mongo
-  #  hostname: mongo
-  #  restart: always
-  #  command:
-  #    - '--logpath'
-  #    - '/var/log/mongodb/mongod.log'
-  #  environment:
-  #    MONGO_INITDB_ROOT_USERNAME: root
-  #    MONGO_INITDB_ROOT_PASSWORD: 12345678
-  #  volumes:
-  #    - mongo_data:/data/db
-  #    - mongo_log:/var/log/mongodb
-  #    - share_data:/partage
-  #  networks:
-  #    - bigdata
-  #  ports:
-  #    - 27017:27017
+  # MONGODB
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    hostname: mongo
+    restart: always
+    command:
+      - '--logpath'
+      - '/var/log/mongodb/mongod.log'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 12345678
+    volumes:
+      - mongo_data:/data/db
+      - mongo_log:/var/log/mongodb
+      - share_data:/partage
+    networks:
+      - bigdata
+    ports:
+      - 27017:27017
   
   ## UI MONGO (not needed, use compass|dbeaver|mongosh)
   #mongo-express:
@@ -279,6 +279,7 @@ services:
     restart: always
     environment:
       - NIFI_WEB_HTTPS_PORT=8443
+      #- NIFI_WEB_HTTP_PORT=8080
       - SINGLE_USER_CREDENTIALS_USERNAME=nifi_user
       - SINGLE_USER_CREDENTIALS_PASSWORD=lundimardi1234
     volumes:
@@ -289,6 +290,96 @@ services:
     ports:
       - "8887:8080"
       - "8443:8443"
+  
+  ### KAFKA SIMPLE:
+  ## url: https://github.com/conduktor/kafka-stack-docker-compose/blob/master/zk-single-kafka-single.yml
+  ## config: https://docs.confluent.io/platform/current/installation/docker/config-reference.html#confluent-ak-configuration
+  #zookeeper:
+  #  image: confluentinc/cp-zookeeper:7.3.2
+  #  hostname: zookeeper
+  #  container_name: zookeeper
+  #  restart: always
+  #  ports:
+  #    - "2181:2181"
+  #  environment:
+  #    ZOOKEEPER_CLIENT_PORT: 2181
+  #    ZOOKEEPER_SERVER_ID: 1
+  #    ZOOKEEPER_SERVERS: zookeeper:2888:3888
+  #  volumes:
+  #    - share_data:/partage
+  #  networks:
+  #    - bigdata
+  #
+  #kafka:
+  #  image: confluentinc/cp-kafka:7.3.2
+  #  hostname: kafka
+  #  container_name: kafka
+  #  restart: always
+  #  ports:
+  #    - "9092:9092"
+  #    - "29092:29092"
+  #    - "9999:9999"
+  #  environment:
+  #    KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092,DOCKER://host.docker.internal:29092
+  #    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,DOCKER:PLAINTEXT
+  #    KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  #    KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+  #    KAFKA_BROKER_ID: 1
+  #    KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+  #    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #    KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  #    KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  #    KAFKA_JMX_PORT: 9999
+  #    KAFKA_JMX_HOSTNAME: ${DOCKER_HOST_IP:-127.0.0.1}
+  #    KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+  #    KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+  #  depends_on:
+  #    - zookeeper
+  #  volumes:
+  #    - share_data:/partage
+  #  networks:
+  #    - bigdata
+      
+  ### KAFKA FULL (fast and full setup)
+  ## video: https://www.youtube.com/watch?v=Lq-qoMKSQLo
+  ## Docker hub: https://hub.docker.com/r/landoop/fast-data-dev
+  ## github: https://github.com/soumilshah1995/DebeziumFlinkHudiSync/tree/main
+  ## A Kafka distribution with Apache Kafka, Kafka Connect, Zookeeper, Confluent Schema Registry and REST Proxy
+  ## Lenses.io Lenses or kafka-topics-ui, schema-registry-ui, kafka-connect-ui
+  ## Lenses.io Stream Reactor, 25+ Kafka Connectors to simplify ETL processes
+  ## Integration testing and examples embedded into the docker
+  #kafka-full:
+  #  #image: landoop/fast-data-dev:3.6
+  #  image: dougdonohoe/fast-data-dev
+  #  container_name: kafka-full
+  #  hostname: kafka-full
+  #  restart: always    
+  #  environment:      
+  #    - WEB_PORT=3040 #UI
+  #    - REGISTRY_PORT=8081
+  #    - ZK_PORT=3181
+  #    - REST_PORT=7082
+  #    - CONNECT_PORT=7083
+  #    - BROKER_PORT=7092 #BROKER
+  #    - ADV_HOST=127.0.0.1
+  #    #- CONNECT_HEAP=2G
+  #    - SAMPLEDATA=0
+  #    - RUNNING_SAMPLEDATA=0
+  #    #- RUNTESTS=0
+  #    - CONNECTORS=debezium-mysql
+  #    - DISABLE=azure-documentdb,blockchain,bloomberg,cassandra,coap,druid,elastic,elastic5,ftp,hazelcast,hbase,influxdb,jms,kudu,mongodb,mqtt,pulsar,redis,rethink,voltdb,couchbase,dbvisitreplicate,debezium-mongodb,debezium-postgres,elasticsearch,hdfs,jdbc,s3,twitter
+  #  volumes:
+  #    - share_data:/partage
+  #  networks:
+  #    - bigdata
+  #  ports:
+  #    - "3181:3181"
+  #    - "3040:3040"
+  #    - "7081:7081"
+  #    - "7082:7082"
+  #    - "7083:7083"
+  #    - "7092:7092"
+  #    - "8081:8081"
    
   ## SPARK
   #spark-master:
@@ -421,18 +512,18 @@ volumes:
       type: none
       device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mysql
       o: bind
-  #mongo_data:
-  #  driver: local # Define the driver and options under the volume name
-  #  driver_opts:
-  #    type: none
-  #    device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mogodb\db
-  #    o: bind
-  #mongo_log:
-  #  driver: local # Define the driver and options under the volume name
-  #  driver_opts:
-  #    type: none
-  #    device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mogodb\log
-  #    o: bind
+  mongo_data:
+    driver: local # Define the driver and options under the volume name
+    driver_opts:
+      type: none
+      device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mogodb\db
+      o: bind
+  mongo_log:
+    driver: local # Define the driver and options under the volume name
+    driver_opts:
+      type: none
+      device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mogodb\log
+      o: bind
   #elastic_data:
   #  driver: local # Define the driver and options under the volume name
   #  driver_opts:
