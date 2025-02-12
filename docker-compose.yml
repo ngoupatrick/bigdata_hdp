@@ -81,15 +81,15 @@ services:
       - data1-1:/data1
       - data1-2:/data2
   
-  ##minio2:
-  ##  <<: *minio-common
-  ##  hostname: minio2
-  ##  container_name: minio2
-  ##  restart: always
-  ##  volumes:
-  ##    - data2-1:/data1
-  ##    - data2-2:/data2
-  #
+  ###minio2:
+  ###  <<: *minio-common
+  ###  hostname: minio2
+  ###  container_name: minio2
+  ###  restart: always
+  ###  volumes:
+  ###    - data2-1:/data1
+  ###    - data2-2:/data2
+  ##
   nginx_minio:
     image: nginx:1.19.2-alpine
     hostname: nginx_minio
@@ -215,6 +215,8 @@ services:
   # MYSQL
   nanp-mysql:
     image: mysql:8.0
+    #image: mysql:8.0.33
+    #image: quay.io/debezium/example-mysql:2.1
     container_name: nanp-mysql
     hostname: nanp-mysql
     environment:
@@ -229,27 +231,27 @@ services:
       - bigdata
     ports:
       - "8889:3306"  
-  
-  # MONGODB
-  mongo:
-    image: mongo:latest
-    container_name: mongo
-    hostname: mongo
-    restart: always
-    command:
-      - '--logpath'
-      - '/var/log/mongodb/mongod.log'
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: 12345678
-    volumes:
-      - mongo_data:/data/db
-      - mongo_log:/var/log/mongodb
-      - share_data:/partage
-    networks:
-      - bigdata
-    ports:
-      - 27017:27017
+  #
+  ## MONGODB
+  #mongo:
+  #  image: mongo:latest
+  #  container_name: mongo
+  #  hostname: mongo
+  #  restart: always
+  #  command:
+  #    - '--logpath'
+  #    - '/var/log/mongodb/mongod.log'
+  #  environment:
+  #    MONGO_INITDB_ROOT_USERNAME: root
+  #    MONGO_INITDB_ROOT_PASSWORD: 12345678
+  #  volumes:
+  #    - mongo_data:/data/db
+  #    - mongo_log:/var/log/mongodb
+  #    - share_data:/partage
+  #  networks:
+  #    - bigdata
+  #  ports:
+  #    - 27017:27017
   
   ## UI MONGO (not needed, use compass|dbeaver|mongosh)
   #mongo-express:
@@ -271,25 +273,25 @@ services:
   
 
 
-  # NIFI
-  nanp-nifi:
-    image: apache/nifi:1.24.0
-    container_name: nanp-nifi
-    hostname: nanp-nifi
-    restart: always
-    environment:
-      - NIFI_WEB_HTTPS_PORT=8443
-      #- NIFI_WEB_HTTP_PORT=8080
-      - SINGLE_USER_CREDENTIALS_USERNAME=nifi_user
-      - SINGLE_USER_CREDENTIALS_PASSWORD=lundimardi1234
-    volumes:
-      #- nifi_data:/opt/nifi/nifi-current/
-      - share_data:/partage
-    networks:
-      - bigdata
-    ports:
-      - "8887:8080"
-      - "8443:8443"
+  ## NIFI
+  #nanp-nifi:
+  #  image: apache/nifi:1.24.0
+  #  container_name: nanp-nifi
+  #  hostname: nanp-nifi
+  #  restart: always
+  #  environment:
+  #    - NIFI_WEB_HTTPS_PORT=8443
+  #    #- NIFI_WEB_HTTP_PORT=8080
+  #    - SINGLE_USER_CREDENTIALS_USERNAME=nifi_user
+  #    - SINGLE_USER_CREDENTIALS_PASSWORD=lundimardi1234
+  #  volumes:
+  #    #- nifi_data:/opt/nifi/nifi-current/
+  #    - share_data:/partage
+  #  networks:
+  #    - bigdata
+  #  ports:
+  #    - "8887:8080"
+  #    - "8443:8443"
   
   ### KAFKA SIMPLE:
   ## url: https://github.com/conduktor/kafka-stack-docker-compose/blob/master/zk-single-kafka-single.yml
@@ -340,46 +342,93 @@ services:
   #  networks:
   #    - bigdata
       
-  ### KAFKA FULL (fast and full setup)
-  ## video: https://www.youtube.com/watch?v=Lq-qoMKSQLo
-  ## Docker hub: https://hub.docker.com/r/landoop/fast-data-dev
-  ## github: https://github.com/soumilshah1995/DebeziumFlinkHudiSync/tree/main
-  ## A Kafka distribution with Apache Kafka, Kafka Connect, Zookeeper, Confluent Schema Registry and REST Proxy
-  ## Lenses.io Lenses or kafka-topics-ui, schema-registry-ui, kafka-connect-ui
-  ## Lenses.io Stream Reactor, 25+ Kafka Connectors to simplify ETL processes
-  ## Integration testing and examples embedded into the docker
-  #kafka-full:
-  #  #image: landoop/fast-data-dev:3.6
-  #  image: dougdonohoe/fast-data-dev
-  #  container_name: kafka-full
-  #  hostname: kafka-full
-  #  restart: always    
-  #  environment:      
-  #    - WEB_PORT=3040 #UI
-  #    - REGISTRY_PORT=8081
-  #    - ZK_PORT=3181
-  #    - REST_PORT=7082
-  #    - CONNECT_PORT=7083
-  #    - BROKER_PORT=7092 #BROKER
-  #    - ADV_HOST=127.0.0.1
-  #    #- CONNECT_HEAP=2G
-  #    - SAMPLEDATA=0
-  #    - RUNNING_SAMPLEDATA=0
-  #    #- RUNTESTS=0
-  #    - CONNECTORS=debezium-mysql
-  #    - DISABLE=azure-documentdb,blockchain,bloomberg,cassandra,coap,druid,elastic,elastic5,ftp,hazelcast,hbase,influxdb,jms,kudu,mongodb,mqtt,pulsar,redis,rethink,voltdb,couchbase,dbvisitreplicate,debezium-mongodb,debezium-postgres,elasticsearch,hdfs,jdbc,s3,twitter
-  #  volumes:
-  #    - share_data:/partage
-  #  networks:
-  #    - bigdata
-  #  ports:
-  #    - "3181:3181"
-  #    - "3040:3040"
-  #    - "7081:7081"
-  #    - "7082:7082"
-  #    - "7083:7083"
-  #    - "7092:7092"
-  #    - "8081:8081"
+  ## KAFKA FULL (fast and full setup)
+  # video: https://www.youtube.com/watch?v=Lq-qoMKSQLo
+  # Docker hub: https://hub.docker.com/r/landoop/fast-data-dev
+  # github: https://github.com/soumilshah1995/DebeziumFlinkHudiSync/tree/main
+  # A Kafka distribution with Apache Kafka, Kafka Connect, Zookeeper, Confluent Schema Registry and REST Proxy
+  # Lenses.io Lenses or kafka-topics-ui, schema-registry-ui, kafka-connect-ui
+  # Lenses.io Stream Reactor, 25+ Kafka Connectors to simplify ETL processes
+  # Integration testing and examples embedded into the docker
+  kafka-full:
+    #image: landoop/fast-data-dev:3.6
+    image: dougdonohoe/fast-data-dev
+    container_name: kafka-full
+    hostname: kafka-full
+    restart: always    
+    environment:      
+      - WEB_PORT=3040 #UI
+      - REGISTRY_PORT=8081
+      - ZK_PORT=3181
+      - REST_PORT=7082
+      - CONNECT_PORT=7083
+      - BROKER_PORT=7092 #BROKER
+      #- ADV_HOST=127.0.0.1
+      - ADV_HOST=kafka-full
+      #- CONNECT_HEAP=2G
+      - SAMPLEDATA=0
+      - RUNNING_SAMPLEDATA=0
+      #- RUNTESTS=0
+      - CONNECTORS=debezium-mysql,s3,jdbc
+      - DISABLE=azure-documentdb,blockchain,bloomberg,cassandra,coap,druid,elastic,elastic5,ftp,hazelcast,hbase,influxdb,jms,kudu,mongodb,mqtt,pulsar,redis,rethink,voltdb,couchbase,dbvisitreplicate,debezium-mongodb,debezium-postgres,elasticsearch,hdfs,twitter
+      - AWS_ACCESS_KEY_ID=C5qSdSNAyQVuN96OgZPK
+      - AWS_ACCESS_KEY=C5qSdSNAyQVuN96OgZPK
+      - AWS_SECRET_KEY=HQcHGOzbYC0kdMrhLIgJVvpdDPqgWeUVnoaBsjal
+      - AWS_SECRET_ACCESS_KEY=HQcHGOzbYC0kdMrhLIgJVvpdDPqgWeUVnoaBsjal
+    volumes:
+      - share_data:/partage
+    networks:
+      - bigdata
+    ports:
+      - "3181:3181"
+      - "3040:3040"
+      - "7081:7081"
+      - "7082:7082"
+      - "7083:7083"
+      - "7092:7092"
+      - "8081:8081"
+  
+  # URL: https://github.com/Programming-with-Mati/ksql-query-tutorial/tree/master
+  # SET 'auto.offset.reset' = 'earliest';   
+  ksqldb-server:
+    image: confluentinc/cp-ksqldb-server:7.8.0
+    hostname: ksqldb-server
+    container_name: ksqldb-server
+    depends_on:
+      - kafka-full
+    ports:
+      - "8088:8088"
+    environment:
+      KSQL_CONFIG_DIR: "/etc/ksql"
+      KSQL_BOOTSTRAP_SERVERS: "kafka-full:7092"
+      KSQL_HOST_NAME: ksqldb-server
+      KSQL_LISTENERS: "http://0.0.0.0:8088"
+      KSQL_CACHE_MAX_BYTES_BUFFERING: 0
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://kafka-full:8081"
+      KSQL_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
+      KSQL_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+      KSQL_KSQL_CONNECT_URL: "http://kafka-full:7083"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_REPLICATION_FACTOR: 1
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: 'true'
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: 'true'
+    volumes:
+      - share_data:/partage
+    networks:
+      - bigdata
+
+  ksqldb-cli:
+    image: confluentinc/cp-ksqldb-cli:7.8.0
+    container_name: ksqldb-cli
+    hostname: ksqldb-cli
+    depends_on:
+      - kafka-full
+      - ksqldb-server
+    entrypoint: /bin/sh
+    tty: true
+    volumes:
+      - share_data:/partage
+    networks:
+      - bigdata
    
   ## SPARK
   #spark-master:
@@ -512,18 +561,18 @@ volumes:
       type: none
       device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mysql
       o: bind
-  mongo_data:
-    driver: local # Define the driver and options under the volume name
-    driver_opts:
-      type: none
-      device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mogodb\db
-      o: bind
-  mongo_log:
-    driver: local # Define the driver and options under the volume name
-    driver_opts:
-      type: none
-      device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mogodb\log
-      o: bind
+  #mongo_data:
+  #  driver: local # Define the driver and options under the volume name
+  #  driver_opts:
+  #    type: none
+  #    device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mogodb\db
+  #    o: bind
+  #mongo_log:
+  #  driver: local # Define the driver and options under the volume name
+  #  driver_opts:
+  #    type: none
+  #    device: C:\Users\ngoun\Downloads\music\docker_volume\volume_mogodb\log
+  #    o: bind
   #elastic_data:
   #  driver: local # Define the driver and options under the volume name
   #  driver_opts:
